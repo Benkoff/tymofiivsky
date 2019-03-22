@@ -14,7 +14,7 @@
 * REST
 
 ## Frontend
-* Angular 2+
+* Angular 6
 
 #### REST Endpoints
 * model: /domain/resource/version 
@@ -24,5 +24,3 @@
 * singleton resource by id
 `/room/reservation/v1/{id}`
 * JSON format
-* create reservation: `POST: /room/reservation/v1` requires Headers & Request Body
-
