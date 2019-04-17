@@ -2,17 +2,17 @@ package io.github.benkoff.tymofiivsky.model.response;
 
 import io.github.benkoff.tymofiivsky.model.Links;
 
-public class ReservationResponse {
+public class ReservableRoomResponse {
 
     private Long id;
     private String roomNumber;
     private Integer price;
     private Links links;
 
-    public ReservationResponse() {
+    public ReservableRoomResponse() {
     }
 
-    public ReservationResponse(String roomNumber, Integer price) {
+    public ReservableRoomResponse(String roomNumber, Integer price) {
         this.roomNumber = roomNumber;
         this.price = price;
     }

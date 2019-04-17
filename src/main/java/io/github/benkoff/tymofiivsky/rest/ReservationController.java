@@ -1,10 +1,11 @@
 package io.github.benkoff.tymofiivsky.rest;
 
-import io.github.benkoff.tymofiivsky.converter.RoomEntityToReservationResponseConverter;
+import io.github.benkoff.tymofiivsky.converter.RoomEntityToReservableRoomResponseConverter;
 import io.github.benkoff.tymofiivsky.entity.RoomEntity;
 import io.github.benkoff.tymofiivsky.model.request.ReservationRequest;
-import io.github.benkoff.tymofiivsky.model.response.ReservationResponse;
+import io.github.benkoff.tymofiivsky.model.response.ReservableRoomResponse;
 import io.github.benkoff.tymofiivsky.repository.PageableRoomRepository;
+import io.github.benkoff.tymofiivsky.repository.RoomRepository;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -25,14 +26,17 @@ import java.time.LocalDate;
 @RequestMapping(ResourceConstants.ROOM_RESERVATION_V1)
 public class ReservationController {
     private final PageableRoomRepository pageableRoomRepository;
+    private final RoomRepository roomRepository;
 
     @Autowired
-    public ReservationController(final PageableRoomRepository pageableRoomRepository) {
+    public ReservationController(final PageableRoomRepository pageableRoomRepository,
+                                 final RoomRepository roomRepository) {
         this.pageableRoomRepository = pageableRoomRepository;
+        this.roomRepository = roomRepository;
     }
 
-    @RequestMapping(path = "", method = RequestMethod.GET, produces = MediaType.APPLICATION_JSON_UTF8_VALUE)
-    public Page<ReservationResponse> getAvailableRooms(
+    @RequestMapping(path = "/rooms", method = RequestMethod.GET, produces = MediaType.APPLICATION_JSON_UTF8_VALUE)
+    public Page<ReservableRoomResponse> getAvailableRooms(
             @RequestParam(value = "checkin")
             @DateTimeFormat(iso = DateTimeFormat.ISO.DATE)
                     LocalDate checkin,
@@ -42,7 +46,18 @@ public class ReservationController {
             Pageable pageable) {
         Page<RoomEntity> roomsList = pageableRoomRepository.findAll(pageable);
 
-        return roomsList.map(source -> new RoomEntityToReservationResponseConverter().convert(source));
+        return roomsList.map(source -> new RoomEntityToReservableRoomResponseConverter().convert(source));
+    }
+
+    @RequestMapping(
+            path = "/rooms/{roomId}",
+            method = RequestMethod.GET,
+            produces = MediaType.APPLICATION_JSON_UTF8_VALUE)
+    public ResponseEntity<RoomEntity> getRoomById(@PathVariable Long roomId) {
+
+        return roomRepository.findById(roomId)
+                .map(roomEntity -> new ResponseEntity<>(roomEntity, HttpStatus.OK))
+                .orElse(new ResponseEntity<>(new RoomEntity(), HttpStatus.NOT_FOUND));
     }
 
     @RequestMapping(
@@ -50,9 +65,9 @@ public class ReservationController {
             method = RequestMethod.POST,
             produces = MediaType.APPLICATION_JSON_UTF8_VALUE,
             consumes = MediaType.APPLICATION_JSON_UTF8_VALUE)
-    public ResponseEntity<ReservationResponse> createReservation(@RequestBody ReservationRequest reservationRequest) {
+    public ResponseEntity<ReservableRoomResponse> createReservation(@RequestBody ReservationRequest reservationRequest) {
 
-        return new ResponseEntity<>(new ReservationResponse(), HttpStatus.CREATED);
+        return new ResponseEntity<>(new ReservableRoomResponse(), HttpStatus.CREATED);
     }
 
     @RequestMapping(
@@ -60,9 +75,9 @@ public class ReservationController {
             method = RequestMethod.PUT,
             produces = MediaType.APPLICATION_JSON_UTF8_VALUE,
             consumes = MediaType.APPLICATION_JSON_UTF8_VALUE)
-    public ResponseEntity<ReservationResponse> updateReservation(@RequestBody ReservationRequest reservationRequest) {
+    public ResponseEntity<ReservableRoomResponse> updateReservation(@RequestBody ReservationRequest reservationRequest) {
 
-        return new ResponseEntity<>(new ReservationResponse(), HttpStatus.OK);
+        return new ResponseEntity<>(new ReservableRoomResponse(), HttpStatus.OK);
     }
 
     @RequestMapping(path = "/{reservationId}", method = RequestMethod.DELETE)
