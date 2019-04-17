@@ -1,12 +1,15 @@
 package io.github.benkoff.tymofiivsky.rest;
 
 import io.github.benkoff.tymofiivsky.converter.RoomEntityToReservableRoomResponseConverter;
+import io.github.benkoff.tymofiivsky.entity.ReservationEntity;
 import io.github.benkoff.tymofiivsky.entity.RoomEntity;
 import io.github.benkoff.tymofiivsky.model.request.ReservationRequest;
 import io.github.benkoff.tymofiivsky.model.response.ReservableRoomResponse;
 import io.github.benkoff.tymofiivsky.repository.PageableRoomRepository;
+import io.github.benkoff.tymofiivsky.repository.ReservationRepository;
 import io.github.benkoff.tymofiivsky.repository.RoomRepository;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.core.convert.ConversionService;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.format.annotation.DateTimeFormat;
@@ -21,18 +24,25 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import java.time.LocalDate;
+import java.util.Optional;
 
 @RestController
 @RequestMapping(ResourceConstants.ROOM_RESERVATION_V1)
 public class ReservationController {
     private final PageableRoomRepository pageableRoomRepository;
     private final RoomRepository roomRepository;
+    private final ReservationRepository reservationRepository;
+    private final ConversionService conversionService;
 
     @Autowired
     public ReservationController(final PageableRoomRepository pageableRoomRepository,
-                                 final RoomRepository roomRepository) {
+                                 final RoomRepository roomRepository,
+                                 final ReservationRepository reservationRepository,
+                                 final ConversionService conversionService) {
         this.pageableRoomRepository = pageableRoomRepository;
         this.roomRepository = roomRepository;
+        this.reservationRepository = reservationRepository;
+        this.conversionService = conversionService;
     }
 
     @RequestMapping(path = "/rooms", method = RequestMethod.GET, produces = MediaType.APPLICATION_JSON_UTF8_VALUE)
@@ -65,9 +75,26 @@ public class ReservationController {
             method = RequestMethod.POST,
             produces = MediaType.APPLICATION_JSON_UTF8_VALUE,
             consumes = MediaType.APPLICATION_JSON_UTF8_VALUE)
-    public ResponseEntity<ReservableRoomResponse> createReservation(@RequestBody ReservationRequest reservationRequest) {
+    public ResponseEntity createReservation(@RequestBody ReservationRequest reservationRequest) {
+        ResponseEntity responseEntity = new ResponseEntity<>(new ReservableRoomResponse(), HttpStatus.BAD_REQUEST);
+        if (reservationRequest.getRoomId() == null) {
+            return responseEntity;
+        }
+        Optional<RoomEntity> optional = roomRepository.findById(reservationRequest.getRoomId());
 
-        return new ResponseEntity<>(new ReservableRoomResponse(), HttpStatus.CREATED);
+        //TODO Add logic to check the room availability
+        if (optional.isPresent()) {
+            ReservationEntity reservationEntity = reservationRepository.save(
+                    conversionService.convert(reservationRequest, ReservationEntity.class));
+            RoomEntity room = optional.get();
+            room.addReservation(reservationEntity);
+            roomRepository.save(room);
+            responseEntity = new ResponseEntity<>(
+                    conversionService.convert(room, ReservableRoomResponse.class),
+                    HttpStatus.CREATED);
+        }
+
+        return responseEntity;
     }
 
     @RequestMapping(

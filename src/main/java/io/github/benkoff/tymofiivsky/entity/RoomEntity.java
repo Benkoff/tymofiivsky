@@ -1,6 +1,7 @@
 package io.github.benkoff.tymofiivsky.entity;
 
 import javax.persistence.Entity;
+import javax.persistence.FetchType;
 import javax.persistence.GeneratedValue;
 import javax.persistence.GenerationType;
 import javax.persistence.Id;
@@ -25,7 +26,7 @@ public class RoomEntity {
     @NotNull
     private Integer price;
 
-    @OneToMany
+    @OneToMany(fetch = FetchType.EAGER)
     private Set<ReservationEntity> reservations = new HashSet<>();
 
     public RoomEntity() {
