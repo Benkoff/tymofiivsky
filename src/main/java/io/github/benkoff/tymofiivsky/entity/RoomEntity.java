@@ -1,5 +1,6 @@
 package io.github.benkoff.tymofiivsky.entity;
 
+import javax.persistence.CascadeType;
 import javax.persistence.Entity;
 import javax.persistence.FetchType;
 import javax.persistence.GeneratedValue;
@@ -26,7 +27,7 @@ public class RoomEntity {
     @NotNull
     private Integer price;
 
-    @OneToMany(fetch = FetchType.EAGER)
+    @OneToMany(mappedBy = "room", fetch = FetchType.EAGER, cascade = CascadeType.PERSIST)
     private Set<ReservationEntity> reservations = new HashSet<>();
 
     public RoomEntity() {
@@ -63,14 +64,16 @@ public class RoomEntity {
 
     public Set<ReservationEntity> addReservation(final ReservationEntity reservationEntity) {
         reservations.add(reservationEntity);
+        reservationEntity.setRoom(this);
 
         return reservations;
     }
 
-    public Set<ReservationEntity> removeReservation(final ReservationEntity reservationEntity) {
-        reservations.remove(reservationEntity);
-
-        return reservations;
+    public void removeReservation(final ReservationEntity reservationEntity) {
+        if (reservationEntity != null) {
+            reservations.remove(reservationEntity);
+            reservationEntity.setRoom(null);
+        }
     }
 
     @Override
