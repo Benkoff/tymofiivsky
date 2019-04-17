@@ -34,6 +34,10 @@ public class ReservationEntity {
         return id;
     }
 
+    public void setId(final Long id) {
+        this.id = id;
+    }
+
     public LocalDate getCheckin() {
         return checkin;
     }
