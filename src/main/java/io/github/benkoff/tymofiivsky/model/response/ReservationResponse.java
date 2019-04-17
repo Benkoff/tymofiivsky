@@ -5,14 +5,14 @@ import io.github.benkoff.tymofiivsky.model.Links;
 public class ReservationResponse {
 
     private Long id;
-    private Integer roomNumber;
+    private String roomNumber;
     private Integer price;
     private Links links;
 
     public ReservationResponse() {
     }
 
-    public ReservationResponse(Integer roomNumber, Integer price) {
+    public ReservationResponse(String roomNumber, Integer price) {
         this.roomNumber = roomNumber;
         this.price = price;
     }
@@ -25,11 +25,11 @@ public class ReservationResponse {
         this.id = id;
     }
 
-    public Integer getRoomNumber() {
+    public String getRoomNumber() {
         return roomNumber;
     }
 
-    public void setRoomNumber(Integer roomNumber) {
+    public void setRoomNumber(String roomNumber) {
         this.roomNumber = roomNumber;
     }
 

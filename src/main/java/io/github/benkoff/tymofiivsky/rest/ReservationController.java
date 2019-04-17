@@ -1,7 +1,13 @@
 package io.github.benkoff.tymofiivsky.rest;
 
+import io.github.benkoff.tymofiivsky.converter.RoomEntityToReservationResponseConverter;
+import io.github.benkoff.tymofiivsky.entity.RoomEntity;
 import io.github.benkoff.tymofiivsky.model.request.ReservationRequest;
 import io.github.benkoff.tymofiivsky.model.response.ReservationResponse;
+import io.github.benkoff.tymofiivsky.repository.PageableRoomRepository;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
@@ -16,19 +22,27 @@ import org.springframework.web.bind.annotation.RestController;
 import java.time.LocalDate;
 
 @RestController
-@RequestMapping(ResourseConstants.ROOM_RESERVATION_V1)
-public class ReservationResource {
+@RequestMapping(ResourceConstants.ROOM_RESERVATION_V1)
+public class ReservationController {
+    private final PageableRoomRepository pageableRoomRepository;
+
+    @Autowired
+    public ReservationController(final PageableRoomRepository pageableRoomRepository) {
+        this.pageableRoomRepository = pageableRoomRepository;
+    }
 
     @RequestMapping(path = "", method = RequestMethod.GET, produces = MediaType.APPLICATION_JSON_UTF8_VALUE)
-    public ResponseEntity<ReservationResponse> getAvailableRooms(
+    public Page<ReservationResponse> getAvailableRooms(
             @RequestParam(value = "checkin")
             @DateTimeFormat(iso = DateTimeFormat.ISO.DATE)
                     LocalDate checkin,
             @RequestParam(value = "checkout")
             @DateTimeFormat(iso = DateTimeFormat.ISO.DATE)
-                    LocalDate checkout) {
+                    LocalDate checkout,
+            Pageable pageable) {
+        Page<RoomEntity> roomsList = pageableRoomRepository.findAll(pageable);
 
-        return new ResponseEntity<>(new ReservationResponse(), HttpStatus.OK);
+        return roomsList.map(source -> new RoomEntityToReservationResponseConverter().convert(source));
     }
 
     @RequestMapping(

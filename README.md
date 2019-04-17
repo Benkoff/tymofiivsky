@@ -17,10 +17,10 @@
 * Angular 6
 
 #### REST Endpoints
-* model: /domain/resource/version 
-`/room/reservation/v1/{id}`
+* model: /version/domain/resource
+`/v1/reservations/rooms/{id}`
 * collection resource
-`/room/reservation/v1`
+`/v1/reservations/rooms`
 * singleton resource by id
-`/room/reservation/v1/{id}`
+`/v1/reservations/rooms/{id}`
 * JSON format
