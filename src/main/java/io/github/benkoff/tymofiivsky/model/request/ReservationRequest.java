@@ -52,4 +52,14 @@ public class ReservationRequest {
     public void setCheckout(LocalDate checkout) {
         this.checkout = checkout;
     }
+
+    @Override
+    public String toString() {
+        return "ReservationRequest{" +
+                "id=" + id +
+                ", roomId=" + roomId +
+                ", checkin=" + checkin +
+                ", checkout=" + checkout +
+                '}';
+    }
 }

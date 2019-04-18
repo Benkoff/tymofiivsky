@@ -5,9 +5,12 @@ import io.github.benkoff.tymofiivsky.entity.ReservationEntity;
 import io.github.benkoff.tymofiivsky.entity.RoomEntity;
 import io.github.benkoff.tymofiivsky.model.request.ReservationRequest;
 import io.github.benkoff.tymofiivsky.model.response.ReservableRoomResponse;
+import io.github.benkoff.tymofiivsky.model.response.ReservationResponse;
 import io.github.benkoff.tymofiivsky.repository.PageableRoomRepository;
 import io.github.benkoff.tymofiivsky.repository.ReservationRepository;
 import io.github.benkoff.tymofiivsky.repository.RoomRepository;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.core.convert.ConversionService;
 import org.springframework.data.domain.Page;
@@ -16,6 +19,7 @@ import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.CrossOrigin;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -32,12 +36,15 @@ import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
 @RestController
+@CrossOrigin(origins = "http://localhost:4200", maxAge = 3600,
+        methods = {RequestMethod.GET, RequestMethod.POST, RequestMethod.PUT, RequestMethod.DELETE})
 @RequestMapping(ResourceConstants.ROOM_RESERVATION_V1)
 public class ReservationController {
     private final PageableRoomRepository pageableRoomRepository;
     private final RoomRepository roomRepository;
     private final ReservationRepository reservationRepository;
     private final ConversionService conversionService;
+    private final Logger log = LoggerFactory.getLogger(getClass());
 
     @Autowired
     public ReservationController(final PageableRoomRepository pageableRoomRepository,
@@ -61,6 +68,11 @@ public class ReservationController {
             Pageable pageable) {
         Page<RoomEntity> roomsList = pageableRoomRepository.findAll(pageable);
 
+        //TODO Add available rooms selection logic
+        log.info(" Available Rooms from:{} to:{}", checkin, checkout);
+        roomsList.map(source -> new RoomEntityToReservableRoomResponseConverter().convert(source))
+                .forEach(room ->  log.info("  Response: {}", room));
+
         return roomsList.map(source -> new RoomEntityToReservableRoomResponseConverter().convert(source));
     }
 
@@ -68,10 +80,11 @@ public class ReservationController {
             path = "/rooms/{roomId}",
             method = RequestMethod.GET,
             produces = MediaType.APPLICATION_JSON_UTF8_VALUE)
-    public ResponseEntity getRoomById(@PathVariable Long roomId) {
+    public ResponseEntity<ReservableRoomResponse> getRoomById(@PathVariable Long roomId) {
+
         return roomRepository.findById(roomId)
-                .map(roomEntity -> new ResponseEntity<>(roomEntity, HttpStatus.OK))
-                .orElse(new ResponseEntity<>(new RoomEntity(), HttpStatus.NOT_FOUND));
+                .map(r -> makeResponse(new RoomEntityToReservableRoomResponseConverter().convert(r), HttpStatus.OK))
+                .orElseGet(() -> makeResponse(new ReservableRoomResponse(), HttpStatus.NOT_FOUND));
     }
 
     @RequestMapping(
@@ -79,10 +92,12 @@ public class ReservationController {
             method = RequestMethod.POST,
             produces = MediaType.APPLICATION_JSON_UTF8_VALUE,
             consumes = MediaType.APPLICATION_JSON_UTF8_VALUE)
-    public ResponseEntity createReservation(@RequestBody ReservationRequest reservationRequest) {
+    public ResponseEntity<ReservableRoomResponse> createReservation(@RequestBody ReservationRequest reservationRequest) {
         Optional<RoomEntity> optional =
                 Optional.ofNullable(reservationRequest.getRoomId()).flatMap(roomRepository::findById);
-        if (optional.isPresent()) {
+        if (optional.isPresent()
+                && reservationRequest.getCheckin() != null
+                && reservationRequest.getCheckout() != null) {
             RoomEntity room = optional.get();
             List<LocalDate> reservedDates = new ArrayList<>();
             room.getReservations().forEach(reservation -> reservedDates.addAll(getDates(reservation)));
@@ -99,15 +114,13 @@ public class ReservationController {
                 room.addReservation(reservationEntity);
                 roomRepository.save(room);
 
-                return new ResponseEntity<>(
-                        conversionService.convert(room, ReservableRoomResponse.class),
-                        HttpStatus.CREATED);
+                return makeResponse(conversionService.convert(room, ReservableRoomResponse.class), HttpStatus.CREATED);
             }
 
-            return new ResponseEntity<>(new ReservableRoomResponse(), HttpStatus.PRECONDITION_FAILED);
+            return makeResponse(new ReservableRoomResponse(), HttpStatus.PRECONDITION_FAILED);
         }
 
-        return new ResponseEntity<>(new ReservableRoomResponse(), HttpStatus.BAD_REQUEST);
+        return makeResponse(new ReservableRoomResponse(), HttpStatus.BAD_REQUEST);
     }
 
     @RequestMapping(
@@ -118,31 +131,32 @@ public class ReservationController {
     public ResponseEntity<ReservableRoomResponse> updateReservation(@RequestBody ReservationRequest reservationRequest) {
         return Optional.ofNullable(reservationRequest.getId())
                 .flatMap(reservationRepository::findById)
-                .map(entity -> {
-                    return Optional.ofNullable(reservationRequest.getRoomId())
-                            .flatMap(roomRepository::findById)
-                            .map(room -> {
-                                entity.setCheckin(reservationRequest.getCheckin());
-                                entity.setCheckout(reservationRequest.getCheckout());
-                                roomRepository.save(room);
-                                return new ResponseEntity<>(
-                                        conversionService.convert(room, ReservableRoomResponse.class),
-                                        HttpStatus.OK);
-                            })
-                            .orElse(new ResponseEntity<>(new ReservableRoomResponse(), HttpStatus.NO_CONTENT));
-                })
-                .orElse(new ResponseEntity<>(new ReservableRoomResponse(), HttpStatus.BAD_REQUEST));
+                .map(entity -> Optional.ofNullable(reservationRequest.getRoomId())
+                        .flatMap(roomRepository::findById)
+                        .map(room -> {
+                            entity.setCheckin(reservationRequest.getCheckin());
+                            entity.setCheckout(reservationRequest.getCheckout());
+                            roomRepository.save(room);
+
+                            return makeResponse(
+                                    conversionService.convert(room, ReservableRoomResponse.class),
+                                    HttpStatus.OK);
+                        })
+                        .orElse(makeResponse(new ReservableRoomResponse(), HttpStatus.NO_CONTENT)))
+                .orElse(makeResponse(new ReservableRoomResponse(), HttpStatus.BAD_REQUEST));
     }
 
-    @RequestMapping(path = "/{reservationId}", method = RequestMethod.DELETE)
-    public ResponseEntity deleteReservation(@PathVariable long reservationId) {
+    @RequestMapping(path = "/{reservationId}", method = RequestMethod.DELETE,
+            produces = MediaType.APPLICATION_JSON_UTF8_VALUE)
+    public ResponseEntity<ReservationResponse> deleteReservation(@PathVariable long reservationId) {
         return reservationRepository.findById(reservationId)
                 .map(entity -> {
                     entity.getRoom().removeReservation(entity);
                     reservationRepository.delete(entity);
-                    return new ResponseEntity<>(HttpStatus.NO_CONTENT);
+
+                    return makeResponse(new ReservationResponse(), HttpStatus.NO_CONTENT);
                 })
-                .orElse(new ResponseEntity<>(HttpStatus.BAD_REQUEST));
+                .orElse(makeResponse(new ReservationResponse(), HttpStatus.BAD_REQUEST));
     }
 
     /**
@@ -154,5 +168,10 @@ public class ReservationController {
         return Stream.iterate(reservation.getCheckin(), date -> date.plusDays(1))
                 .limit(ChronoUnit.DAYS.between(reservation.getCheckin(), reservation.getCheckout()))
                 .collect(Collectors.toList());
+    }
+
+    private <T> ResponseEntity<T> makeResponse(T response, HttpStatus status) {
+        log.info("  Response: {} {}", response, status);
+        return new ResponseEntity<>(response, status);
     }
 }

@@ -1,5 +1,8 @@
 import { Component, OnInit } from '@angular/core';
 import { FormControl, FormGroup } from "@angular/forms";
+import { HttpClient, HttpHeaders } from "@angular/common/http";
+import { Observable } from "rxjs";
+import { map } from "rxjs/operators";
 
 @Component({
   selector: 'app-root',
@@ -8,9 +11,14 @@ import { FormControl, FormGroup } from "@angular/forms";
 })
 export class AppComponent implements OnInit{
 
+  constructor(private http:HttpClient) {}
+
+  private baseUrl:string = 'http://localhost:8080';
   public submitted: boolean;
   roomSearch: FormGroup;
   rooms: Room[];
+  currentCheckInVal:string;
+  currentCheckOutVal:string;
 
   ngOnInit(): void {
     this.roomSearch = new FormGroup({
@@ -18,15 +26,45 @@ export class AppComponent implements OnInit{
       checkout: new FormControl('')
     });
 
-    this.rooms = ROOMS;
+    this.roomSearch.valueChanges.subscribe(valChange => {
+      this.currentCheckInVal = valChange.checkin;
+      this.currentCheckOutVal = valChange.checkout;
+    })
   }
 
   onSubmit({value, valid}: {value:Roomsearch, valid:boolean}) {
-    console.log(value);
+    this.submitted = true;
+    //TODO Stop here if form is invalid
+    console.log('valid:' + valid);
+    this.getAll()
+      .subscribe(
+        rs => {
+          this.rooms = rs;
+          console.log('Rooms List:');
+          this.rooms.forEach(item => console.log(item.id, item.roomNumber, item.price));
+        },
+        err => console.log(err)
+      );
+
   }
 
   reserveRoom(value:string) {
     console.log("Room for reservation id:" + value);
+    this.createReservation(new ReserveRoomRequest(value, this.currentCheckInVal, this.currentCheckOutVal));
+  }
+
+  createReservation(body: ReserveRoomRequest) {
+    let bodyString = JSON.stringify(body);
+    let headers = new HttpHeaders().set('Content-Type', 'application/json');
+
+    this.http.post(this.baseUrl + '/v1/reservations', bodyString, {headers:headers})
+      .subscribe(res => console.log(res), error => console.log("Error", error));
+  }
+
+  getAll():Observable<Room[]> {
+    return this.http.get<Room[]>(this.baseUrl
+      + '/v1/reservations/rooms?checkin=' + this.currentCheckInVal + '&checkout=' + this.currentCheckOutVal)
+      .pipe(map(res => res['content']));
   }
 }
 
@@ -42,23 +80,14 @@ export interface Room {
   links:string;
 }
 
-var ROOMS: Room[] = [
-  {
-    "id": "100101",
-    "roomNumber": "101",
-    "price": "30",
-    "links": ""
-  },
-  {
-    "id": "100102",
-    "roomNumber": "102",
-    "price": "35",
-    "links": ""
-  },
-  {
-    "id": "100103",
-    "roomNumber": "201",
-    "price": "20",
-    "links": ""
+export class ReserveRoomRequest {
+  roomId: string;
+  checkin: string;
+  checkout: string;
+
+  constructor(roomId: string, checkin: string, checkout: string) {
+    this.roomId = roomId;
+    this.checkin = checkin;
+    this.checkout = checkout;
   }
-];
+}
