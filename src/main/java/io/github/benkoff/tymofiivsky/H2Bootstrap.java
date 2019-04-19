@@ -2,13 +2,21 @@ package io.github.benkoff.tymofiivsky;
 
 import io.github.benkoff.tymofiivsky.entity.RoomEntity;
 import io.github.benkoff.tymofiivsky.repository.RoomRepository;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.CommandLineRunner;
 import org.springframework.stereotype.Component;
 
 @Component
 public class H2Bootstrap implements CommandLineRunner {
-    @Autowired RoomRepository roomRepository;
+    private final RoomRepository roomRepository;
+    private final Logger log = LoggerFactory.getLogger(getClass());
+
+    @Autowired
+    public H2Bootstrap(final RoomRepository roomRepository) {
+        this.roomRepository = roomRepository;
+    }
 
     @Override
     public void run(String... args) {
@@ -20,7 +28,6 @@ public class H2Bootstrap implements CommandLineRunner {
         roomRepository.save(new RoomEntity("204", 60));
         roomRepository.save(new RoomEntity("301", 30));
 
-        System.out.println("Bootstrapped data:");
-        roomRepository.findAll().forEach(System.out::println);
+        roomRepository.findAll().forEach(room -> log.info(" Bootstrapped data: {}", room));
     }
 }

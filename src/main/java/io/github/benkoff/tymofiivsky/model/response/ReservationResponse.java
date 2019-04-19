@@ -40,4 +40,13 @@ public class ReservationResponse {
     public void setCheckout(final LocalDate checkout) {
         this.checkout = checkout;
     }
+
+    @Override
+    public String toString() {
+        return "ReservationResponse{" +
+                "id=" + id +
+                ", checkin=" + checkin +
+                ", checkout=" + checkout +
+                '}';
+    }
 }

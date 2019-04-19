@@ -12,7 +12,11 @@ import javax.persistence.ManyToOne;
 import javax.persistence.Table;
 import javax.validation.constraints.NotNull;
 import java.time.LocalDate;
+import java.time.temporal.ChronoUnit;
 import java.util.Objects;
+import java.util.Set;
+import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 @Entity
 @Table(name = "Reservation")
@@ -75,6 +79,12 @@ public class ReservationEntity {
         this.room = room;
     }
 
+    public Set<LocalDate> getDates() {
+        return Stream.iterate(getCheckin(), date -> date.plusDays(1))
+                .limit(ChronoUnit.DAYS.between(getCheckin(), getCheckout()))
+                .collect(Collectors.toSet());
+    }
+
     @Override
     public boolean equals(Object o) {
         if (this == o) return true;
@@ -87,5 +97,15 @@ public class ReservationEntity {
     @Override
     public int hashCode() {
         return Objects.hash(checkin, checkout);
+    }
+
+    @Override
+    public String toString() {
+        return "ReservationEntity{" +
+                "id=" + id +
+                ", checkin=" + checkin +
+                ", checkout=" + checkout +
+                ", room=" + room +
+                '}';
     }
 }

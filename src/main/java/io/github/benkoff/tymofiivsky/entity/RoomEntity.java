@@ -9,9 +9,11 @@ import javax.persistence.Id;
 import javax.persistence.OneToMany;
 import javax.persistence.Table;
 import javax.validation.constraints.NotNull;
+import java.time.LocalDate;
 import java.util.HashSet;
 import java.util.Objects;
 import java.util.Set;
+import java.util.stream.Collectors;
 
 @Entity
 @Table(name = "Room")
@@ -62,11 +64,11 @@ public class RoomEntity {
         return reservations;
     }
 
-    public Set<ReservationEntity> addReservation(final ReservationEntity reservationEntity) {
+    public RoomEntity addReservation(final ReservationEntity reservationEntity) {
         reservations.add(reservationEntity);
         reservationEntity.setRoom(this);
 
-        return reservations;
+        return this;
     }
 
     public void removeReservation(final ReservationEntity reservationEntity) {
@@ -74,6 +76,13 @@ public class RoomEntity {
             reservations.remove(reservationEntity);
             reservationEntity.setRoom(null);
         }
+    }
+
+    public Set<LocalDate> getDates() {
+        return this.reservations.stream()
+                .map(ReservationEntity::getDates)
+                .flatMap(Set::stream)
+                .collect(Collectors.toSet());
     }
 
     @Override

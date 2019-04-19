@@ -48,4 +48,14 @@ public class ReservableRoomResponse {
     public void setLinks(Links links) {
         this.links = links;
     }
+
+    @Override
+    public String toString() {
+        return "ReservableRoomResponse{" +
+                "id=" + id +
+                ", roomNumber='" + roomNumber + '\'' +
+                ", price=" + price +
+                ", links=" + links +
+                '}';
+    }
 }
