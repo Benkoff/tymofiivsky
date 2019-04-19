@@ -14,7 +14,6 @@ export class AppComponent implements OnInit{
   constructor(private http:HttpClient) {}
 
   private baseUrl:string = 'http://localhost:8080';
-  public submitted: boolean;
   roomSearch: FormGroup;
   rooms: Room[];
   currentCheckInVal:string;
@@ -29,23 +28,36 @@ export class AppComponent implements OnInit{
     this.roomSearch.valueChanges.subscribe(valChange => {
       this.currentCheckInVal = valChange.checkin;
       this.currentCheckOutVal = valChange.checkout;
-    })
+    });
+
+    // Fetch all the forms we want to apply custom Bootstrap validation styles to
+    // Loop over them and prevent submission
+    let forms = document.getElementsByClassName('needs-validation');
+    Array.prototype.filter.call(forms, function(form) {
+      form.addEventListener('submit', function(event) {
+        if (form.checkValidity() === false) {
+          event.preventDefault();
+          event.stopPropagation();
+        }
+        form.classList.add('was-validated');
+      }, false);
+    });
   }
 
   onSubmit({value, valid}: {value:Roomsearch, valid:boolean}) {
-    this.submitted = true;
-    //TODO Stop here if form is invalid
-    console.log('valid:' + valid);
+    if (!valid) {
+      return;
+    }
     this.getAll()
       .subscribe(
         rs => {
           this.rooms = rs;
+
           console.log('Rooms List:');
           this.rooms.forEach(item => console.log(item.id, item.roomNumber, item.price));
         },
         err => console.log(err)
       );
-
   }
 
   reserveRoom(value:string) {
